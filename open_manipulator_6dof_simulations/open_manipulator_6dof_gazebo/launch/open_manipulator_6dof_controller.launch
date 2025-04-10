@@ -1,0 +1,33 @@
+<launch>
+  <arg name="use_robot_name"         default="open_manipulator_6dof"/>
+  <arg name="controller" default="position"/>
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find open_manipulator_6dof_gazebo)/config/open_manipulator_6dof_controller.yaml" command="load" if="$(eval arg('controller') == 'position')"/>
+  <rosparam file="$(find open_manipulator_6dof_gazebo)/config/open_manipulator_6dof_controller_torque.yaml" command="load" if="$(eval arg('controller') == 'torque')"/>
+
+  <!-- load the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+  output="screen" ns="$(arg use_robot_name)" args="joint_state_controller
+                                               joint1_position
+                                               joint2_position
+                                               joint3_position
+                                               joint4_position
+					                                     joint5_position
+					                                     joint6_position
+                                               gripper_position
+                                               gripper_sub_position" if="$(eval arg('controller') == 'position')"/>
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+  output="screen" ns="$(arg use_robot_name)" args="joint_state_controller
+                                               joint1_effort
+                                               joint2_effort
+                                               joint3_effort
+                                               joint4_effort
+                                               joint5_effort
+                                               joint6_effort
+                                               gripper_position
+                                               gripper_sub_position" if="$(eval arg('controller') == 'torque')"/>
+
+  <!-- Run gripper sub position publisher -->
+  <node name="gripper_6dof_sub_publisher" pkg="open_manipulator_6dof_gazebo" type="gripper_6dof_sub_publisher" output="screen" ns="$(arg use_robot_name)"/>
+
+</launch>
