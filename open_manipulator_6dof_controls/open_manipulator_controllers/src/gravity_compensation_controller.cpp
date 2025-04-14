@@ -120,6 +120,7 @@ void GravityCompensationController::update(const ros::Time& time, const ros::Dur
     ROS_ERROR("setting message on: %d", i);
     joint_state_msg.position[i] = q_(i);
   }
+  joint_state_msg.position[joint_names_.size()-1] = effort_joint_handles_[joint_names_.size()-1].getPosition();
 
   ROS_ERROR("qi: %d, %d", q_.rows(), q_.columns());
   ROS_ERROR("Current joint positions: %f %f %f %f %f %f %f", q_(0), q_(1), q_(2), q_(3), q_(4), q_(5));
