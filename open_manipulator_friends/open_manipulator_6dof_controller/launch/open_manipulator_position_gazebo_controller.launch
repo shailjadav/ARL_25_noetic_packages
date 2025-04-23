@@ -1,0 +1,23 @@
+<launch>
+  <!-- Argument for the robot namespace -->
+  <arg name="robot_name" default="open_manipulator_6dof"/>
+  <!-- Argument to specify the node name -->
+  <arg name="node_name" default="position_gazebo_controller"/>
+
+  <!-- Define the list of joints the controller will manage -->
+  <!-- Adjust this list if your robot has different joint names -->
+  <rosparam param="joints" ns="$(arg node_name)">
+    ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "gripper", "gripper_sub"]
+  </rosparam>
+
+  <!-- Launch the position gazebo controller node -->
+  <!-- It's often useful to run controller nodes within the robot's namespace -->
+  <node name="$(arg node_name)"
+        pkg="open_manipulator_6dof_controller"
+        type="open_manipulator_position_gazebo_controller"
+        output="screen"
+        ns="$(arg robot_name)">
+        <!-- The 'joints' parameter is loaded via rosparam above into the node's private namespace -->
+  </node>
+
+</launch>
