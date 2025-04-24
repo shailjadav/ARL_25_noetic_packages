@@ -54,9 +54,15 @@ def change_operating_mode(mode_value):
                 print(f"Packet error disabling torque on ID {dxl_id}: {packetHandler.getRxPacketError(dxl_error)}")
                 continue
 
+            # Determine the target mode based on the input mode and motor ID
+            target_mode = mode_value
+            if mode_value == 3 and dxl_id == 17:
+                target_mode = 5  # Change motor 17 to current-based position control mode
+                print(f"Motor ID {dxl_id} is being set to special mode {target_mode} instead of {mode_value}")
+
             # Set new operating mode
             dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(
-                portHandler, dxl_id, ADDR_OPERATING_MODE, mode_value)
+                portHandler, dxl_id, ADDR_OPERATING_MODE, target_mode)
 
             if dxl_comm_result != COMM_SUCCESS:
                 print(f"Communication error setting mode for ID {dxl_id}: {packetHandler.getTxRxResult(dxl_comm_result)}")
@@ -65,7 +71,7 @@ def change_operating_mode(mode_value):
                 print(f"Packet error setting mode for ID {dxl_id}: {packetHandler.getRxPacketError(dxl_error)}")
                 continue
 
-            print(f"Motor ID {dxl_id} set to mode {mode_value}")
+            print(f"Motor ID {dxl_id} set to mode {target_mode}")
             time.sleep(0.1)
 
         portHandler.closePort()
