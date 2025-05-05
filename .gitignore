@@ -1,0 +1,4 @@
+*yolo_results*/
+*train_yolo*/
+*.pt
+my_scripts/**/*.mp4
