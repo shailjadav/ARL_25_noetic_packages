@@ -1,12 +1,24 @@
-# OpenManipulator Sara (ASL based)
+# OpenManipulator Sara for 'Advanced Methods of robot learning'
+
+
 
 ![Gravity Compensation Mode](/src/fig/manipulation.gif)
+
+## Update Packages within docker
+In case you need to update the packages within docker, please follow these instructions:
+```bash
+cd /root/catkin_ws/ && rm -rf src \
+mkdir src
+git clone https://github.com/shailjadav/ARL_25_noetic_packages.git /root/catkin_ws/src/ \
+catkin_make
+```
+If you face issues, have a look at the Troubleshooting and Known Issues sections of this ReadMe.
 
 
 ## Basic Usage
 If you apply changes to the packages in the src folder please remember to build again
 ```bash
-source catkin_make
+catkin_make
 ```
 Occasionally some settings are cached in devel and build. Consider to delete both folder if building does not work appropriately.
 After building the first thing to do in any new terminal session inside the container is to source the setup file. 
@@ -16,7 +28,7 @@ source /catkin_ws/devel/setup.bash
 ```
 
 ### Running in Simulation
-
+This shows the deployment of the base controller (build by the team of Robotis)
 1. **Start ROS master** in one terminal:
    ```bash
    roscore
@@ -124,6 +136,10 @@ source /catkin_ws/devel/setup.bash
     rosbag play move1.bag --hz=50
    ```
 
+# Assignments
+In the folder `root/catkin_ws/src/my_scripts/` there is inspiration for solving the assignments. These are not fully functional solutions, but rather blueprints.
+They are not here to solve your assignments, but rather point you to some direction.  
+
 ## Training and executing DMPs
 
 Wihtin the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
@@ -132,11 +148,14 @@ Wihtin the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts 
 Within the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
 - training YOLO on custom objects using the annotation of the initila frame and deploying SAM2 with the scripts `1_dataset_create.py`, `2_train_model.py` and `3_validate_model.py`.
 - For detecting the objects using the realsense camera you can use `4_rs_detect.py`.
+- Once Objects are detected and their position is evaluated in the world frame, you can use `dmp_controller.py` to use your learned motions and execute them onto custom target goals and start points.
+
+
 
 ## Installing Python packages
 As the solutions for the tasks are not provided beforehand you need to install packages yourself for the solutions.
 For the assignments in the `my_scripts` you can use the requirement.txt or install the packages by hand. The most relevant package here is `pip install movement_primitives[all]`.
-Depending on the setup the python packages vary.
+Depending on your setup the python packages vary.
 
 ## Troubleshooting
 
