@@ -2,3 +2,4 @@
 *train_yolo*/
 *.pt
 my_scripts/**/*.mp4
+*.avi

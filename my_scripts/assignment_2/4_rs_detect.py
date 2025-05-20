@@ -17,10 +17,15 @@ class GPUObjectDetector:
         rospy.init_node('gpu_object_detector', anonymous=True)
         
         # Load parameters
-        self.model_path = "yolov8n.pt" #rospy.get_param("~model_path", "yolov8n.pt")
-        self.confidence = 0.1 #rospy.get_param("~confidence", 0.5)
+        self.model_path = "yolo_results_1/train/weights/best.pt" #rospy.get_param("~model_path", "yolov8n.pt")
+        self.confidence = 0.7 #rospy.get_param("~confidence", 0.5)
         self.sam_ckpt = "sam2_b.pt" #rospy.get_param("~sam_ckpt")
-        self.object = "cell phone"#rospy.get_param("~object")
+        self.object = ["cube_1","cube_2", "cube_3", "cube_4", "cube_5"]    #rospy.get_param("~object")
+        self.prev_X = None
+        self.prev_Y = None
+        self.prev_Z = None
+        self.threshold = 0.1  # Threshold for outlier rejection
+
 
         # Initialize models on GPU
         self.model = YOLO(self.model_path)
@@ -87,6 +92,19 @@ class GPUObjectDetector:
         X = x * depth
         Y = y * depth
         Z = depth
+
+        if self.prev_X is None:
+            self.prev_X = X
+            self.prev_Y = Y
+            self.prev_Z = Z
+
+        threshold = 0.2
+        # Reject outliers based on a distance threshold
+        # print(f"Prev: {self.prev_X}, {self.prev_Y}, {self.prev_Z}")
+        # print(f"Curr: {X}, {Y}, {Z}")
+        if np.linalg.norm(np.array([X - self.prev_X, Y - self.prev_Y, Z - self.prev_Z])) > threshold:
+            rospy.logwarn("Pose jump detected, rejecting outlier")
+            return (None, None, None)
         
         return (X, Y, Z)
 
@@ -97,10 +115,16 @@ class GPUObjectDetector:
             color_image = self.bridge.compressed_imgmsg_to_cv2(rgb_msg)
             depth_image = self.bridge.imgmsg_to_cv2(depth_msg)
 
+            # # Apply a median filter to smooth the depth image
+            # depth_image = cv2.medianBlur(depth_image, 5)
+
             # YOLO inference
             # s_det = time.process_time_ns()
             results = self.model.predict(source=color_image, conf=self.confidence, show=False, verbose=False)
+            # print(f"Detected {len(results)} objects")
             boxes = results[0].boxes
+            # print(f"Detected {len(boxes)} objects")
+            # print(f"Object names: {self.model.names}")
             # e_det = time.process_time_ns()
             # try:
             #     print(len(boxes), self.model.names[int(boxes[0].cls[0])])
@@ -113,11 +137,12 @@ class GPUObjectDetector:
                 class_idx = int(box.cls[0])
                 class_name = self.model.names[class_idx]
 
-                print(class_name)
+                # print(class_name)
 
-                if class_name != self.object:
+                if class_name not in self.object:
                     continue
 
+                print(f"Detected {class_name} with confidence {box.conf[0]:.2f}")
                 # Extract bounding box coordinates
                 bbox = box.xyxy[0]
                 x1, y1, x2, y2 = map(int, bbox.tolist())
@@ -127,16 +152,15 @@ class GPUObjectDetector:
                 mask = sam_results[0].masks
                 mask = np.asarray(mask.xy)[0]
 
-                # print("Running processing")
                 # Process mask and compute orientation
-                self.process_mask(mask, depth_image, x1, y1, x2, y2, idx, rgb_msg.header.stamp, rgb_msg.header.frame_id)
+                self.process_mask(mask, depth_image, x1, y1, x2, y2, idx, rgb_msg.header.stamp, rgb_msg.header.frame_id, class_name)
             e_seg = time.process_time_ns()
             # print("seg", (e_seg - s_seg)/10**9)
             
         except Exception as e:
             rospy.logerr(f"Error in callback: {str(e)}")
 
-    def process_mask(self, mask, depth_image, x1, y1, x2, y2, idx, timestamp, frame_id):
+    def process_mask(self, mask, depth_image, x1, y1, x2, y2, idx, timestamp, frame_id, class_name):
         """Process mask to compute orientation and position"""
         try:
             # Perform PCA on mask coordinates
@@ -144,9 +168,16 @@ class GPUObjectDetector:
             pca.fit(mask)
             components = pca.components_
             
+            # Enforce consistent orientation for the second component
+            # if components[1, 1] < 0:  # Check the y-component of the second principal axis
+            #     components[1] = -components[1]  # Flip the second component if necessary
+
+            
             # Compute orientation from principal component
             major_component = components[0]
             angle_rad = np.arctan2(major_component[1], major_component[0])
+
+            
             quat = quaternion_about_axis(angle_rad, (0, 0, 1))
 
             # Compute 3D position
@@ -154,28 +185,51 @@ class GPUObjectDetector:
             center_y = (y1 + y2) // 2
             
             # Get depth value in meters (assuming depth is in millimeters)
+            if (center_y - 10 >= 0 and center_y + 10 < depth_image.shape[0] and
+                center_x - 10 >= 0 and center_x + 10 < depth_image.shape[1]):
+                depth_array = depth_image[center_y-10:center_y+10, center_x-10:center_x+10]
+                # print(f"Depth array: {depth_array}")
+                print(f"Averaged depth: {np.average(depth_array[depth_array>0.])/1000.0}")
+            else:
+                rospy.logwarn("Selected region is out of depth image boundaries")
             depth = depth_image[center_y, center_x] / 1000.0
-            
+            print(f"Depth at center point: {depth} m")
+            # Validate depth value
+            # if depth <= 0 or np.isnan(depth):
+            #     rospy.logwarn(f"Invalid depth value: {depth}")
+            #     return
+
             # print(f"Center point: ({center_x}, {center_y}), Depth: {depth}")
             # Convert pixel coordinates to 3D point
             X, Y, Z = self.deproject_pixel_to_point(center_x, center_y, depth)
 
             # print(X, Y, Z)
+            if X is None or Y is None or Z is None:
+                rospy.logwarn("Invalid depth value, skipping broadcast")
+                return
 
+            # Example of exponential smoothing
+            alpha = 0.5  # Smoothing factor
+            
+            
+            self.prev_X = alpha * X + (1 - alpha) * self.prev_X
+            self.prev_Y = alpha * Y + (1 - alpha) * self.prev_Y
+            self.prev_Z = alpha * Z + (1 - alpha) * self.prev_Z
+            
             # Broadcast transform if position is valid
             if not np.isnan(X) and not np.isnan(Y) and not np.isnan(Z):
-                self.broadcast_tf(X, Y, Z, quat, timestamp, frame_id)
+                self.broadcast_tf(X, Y, Z, quat, timestamp, frame_id, class_name)
 
         except Exception as e:
             rospy.logerr(f"Error processing mask: {str(e)}")
 
-    def broadcast_tf(self, x, y, z, quat, timestamp, frame_id):
+    def broadcast_tf(self, x, y, z, quat, timestamp, frame_id, class_name):
         """Broadcast object pose as tf transform"""
         self.tf_broadcaster.sendTransform(
             (x, y, z),
             (quat[0], quat[1], quat[2], quat[3]),
             timestamp,
-            "detected_object",
+            class_name,
             "camera_color_frame_calib"
         )
 
@@ -185,3 +239,6 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
+
+
+ 

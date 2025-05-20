@@ -643,8 +643,8 @@ class SAM2YOLOGenerator:
 # Main function - just edit the video path here
 def main():
     # Define your parameters directly here - modify these values as needed
-    video_path = "/root/catkin_ws/python_files/blocks2.mp4"  # <-- Change this to your video file path
-    output_dir = "/root/catkin_ws/python_files/train_yolo/dataset_blocks_statics/"
+    video_path = "/root/catkin_ws/src/my_scripts/assignment_2/blocks_train.mp4"  # <-- Change this to your video file path
+    output_dir = "/root/catkin_ws/src/my_scripts/assignment_2/train_yolo/dataset_blocks_statics/"
     sam2_model = "sam2.1_b.pt"  # Using the base model
     target_fps = 7  # Downsample video to 5 FPS
     

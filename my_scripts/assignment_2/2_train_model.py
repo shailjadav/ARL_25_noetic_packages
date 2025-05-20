@@ -64,7 +64,8 @@ class YOLOTrainer:
             exist_ok=True,
             pretrained=True,
             plots=True,
-            save=True
+            save=True,
+            workers=1
         )
         
         # Save training results
@@ -274,7 +275,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         # Example default settings
         sys.argv.extend([
-            "--data", "/root/catkin_ws/python_files/train_yolo/dataset_blocks_statics/dataset.yaml",  # Path to your dataset YAML
+            "--data", "/root/catkin_ws/src/my_scripts/assignment_2/train_yolo_1/dataset_blocks_statics/dataset.yaml",  # Path to your dataset YAML
             "--model", "yolo11m.pt",           # Using YOLOv8 small model
             "--epochs", "30",                  # Train for 50 epochs
             "--batch", "8",                    # Batch size

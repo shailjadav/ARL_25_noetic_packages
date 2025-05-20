@@ -1,6 +1,7 @@
 # OpenManipulator Sara (ASL based)
 
-
+## Installing Python packages
+For the assignments in the `my_scripts` your can use the requirement.txt or install the packages by hand. The most relevant package here is `pip install movement_primitives[all]`.
 
 ## Basic Usage
 If you apply changes to the packages in the src folder please remember to build again
@@ -68,7 +69,7 @@ source /catkin_ws/devel/setup.bash
 
 2. Use the change_mode script in the `my_scripts` folder. You can pass it an argument mode for chossing between position(3) mode and torque mode(0). For gravity compensation mode we need torque mode. For the om_position controller, we need position mode.
    ```bash
-   roslaunch python3 /root/catkin_ws/my_scripts/change_mode.py --mode 0
+   roslaunch python3 /root/catkin_ws/src/my_scripts/change_mode.py --mode 0
    ```
 
 3. Launch the gravity compensation controller:
@@ -119,6 +120,7 @@ source /catkin_ws/devel/setup.bash
     roslaunch om_position_controller position_control.launch
     rosbag play move1.bag --hz=50
    ```
+
 
 
 ## Troubleshooting

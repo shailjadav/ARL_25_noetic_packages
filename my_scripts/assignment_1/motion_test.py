@@ -15,7 +15,7 @@ import rosbag
 from tf.transformations import quaternion_matrix
 
 
-recording_path = '/root/catkin_ws/recordings/pick8.bag'
+recording_path = '/root/catkin_ws/recordings/pick12.bag'
 
 def animation_callback(step, graph, chain, joint_trajectory):
     chain.forward(joint_trajectory[step])
@@ -107,6 +107,7 @@ else:
     # ---- Outlier removal ----
     positions = np.array([T[:3, 3] for T in transforms_1])
     mask, filtered_positions = remove_outliers_mad(positions, threshold=3.5)
+    dummy_mask = np.ones_like(mask, dtype=bool)
     filtered_transforms = transforms_1[mask]
     filtered_joint_trajectory = joint_trajectory_1[mask]
 

@@ -290,8 +290,8 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         # Example default settings
         sys.argv.extend([
-            "--model", "/root/catkin_ws/python_files/yolo_results/train/weights/best.pt",  # Path to your trained model
-            "--video", "/root/catkin_ws/python_files/blocks2.mp4",                  # Path to your original video
+            "--model", "/root/catkin_ws/src/my_scripts/assignment_2/yolo_results_1/train/weights/best.pt",  # Path to your trained model
+            "--video", "/root/catkin_ws/src/my_scripts/assignment_2/blocks.mp4",                  # Path to your original video
             "--conf", "0.7"                                   # Confidence threshold
         ])
     
