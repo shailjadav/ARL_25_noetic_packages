@@ -144,6 +144,7 @@ Depending on the setup the python packages vary.
 - Check USB permissions if the robot is not detected.
 - Ensure all dynamixel motors are in the correct control mode before recording.
 - Verify the USB port in controller launch file matches your hardware setup.
+- If there is an issue with em / empy. Do pip install empy=3.3.2
 
 ## Known issues
 
