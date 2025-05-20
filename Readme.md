@@ -2,7 +2,7 @@
 
 
 
-![Gravity Compensation Mode](/src/fig/manipulation.gif)
+![Gravity Compensation Mode](fig/manipulation.gif)
 
 ## Update Packages within docker
 In case you need to update the packages within docker, please follow these instructions:
@@ -90,7 +90,7 @@ This shows the deployment of the base controller (build by the team of Robotis)
    ```
 
    This should enable the robot to float in the air like in this example:
-   ![Gravity Compensation Mode](/src/fig/gravity_compensation.gif)
+   ![Gravity Compensation Mode](fig/gravity_compensation.gif)
 
 4. Start end-effector position republishing:
    ```bash
