@@ -145,6 +145,7 @@ They are not here to solve your assignments, but rather point you to some direct
 Wihtin the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
 - checking the recorded motions with `motions_test.py`
 - training DMPs using the recorded trajectories with `dmp_motions.py`. 
+
 Building on top of these within the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
 - training YOLO on custom objects using the annotation of the initila frame and deploying SAM2 with the scripts `1_dataset_create.py`, `2_train_model.py` and `3_validate_model.py`.
 - For detecting the objects using the realsense camera you can use `4_rs_detect.py`.
