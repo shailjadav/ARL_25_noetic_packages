@@ -1,7 +1,7 @@
 # OpenManipulator Sara (ASL based)
 
-## Installing Python packages
-For the assignments in the `my_scripts` your can use the requirement.txt or install the packages by hand. The most relevant package here is `pip install movement_primitives[all]`.
+![Gravity Compensation Mode](/src/fig/manipulation.gif)
+
 
 ## Basic Usage
 If you apply changes to the packages in the src folder please remember to build again
@@ -77,6 +77,9 @@ source /catkin_ws/devel/setup.bash
    roslaunch open_manipulator_controllers gravity_compensation_controller.launch sim:=false
    ```
 
+   This should enable the robot to float in the air like in this example:
+   ![Gravity Compensation Mode](/src/fig/gravity_compensation.gif)
+
 4. Start end-effector position republishing:
    ```bash
    cd src/open_manipulator_friends/open_manipulator_6dof_controller/scripts/
@@ -121,7 +124,19 @@ source /catkin_ws/devel/setup.bash
     rosbag play move1.bag --hz=50
    ```
 
+## Training and executing DMPs
 
+Wihtin the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
+- checking the recorded motions with `motions_test.py`
+- training DMPs using the recorded trajectories with `dmp_motions.py`. Building on top of these  
+Within the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
+- training YOLO on custom objects using the annotation of the initila frame and deploying SAM2 with the scripts `1_dataset_create.py`, `2_train_model.py` and `3_validate_model.py`.
+- For detecting the objects using the realsense camera you can use `4_rs_detect.py`.
+
+## Installing Python packages
+As the solutions for the tasks are not provided beforehand you need to install packages yourself for the solutions.
+For the assignments in the `my_scripts` you can use the requirement.txt or install the packages by hand. The most relevant package here is `pip install movement_primitives[all]`.
+Depending on the setup the python packages vary.
 
 ## Troubleshooting
 
