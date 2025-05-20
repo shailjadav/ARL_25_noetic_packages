@@ -143,7 +143,8 @@ In some cases you may need to adapt the localhost to the hostname. To figure out
 - If gazebo is not responding to any of the position commands try restarting the docker container.
 
 
-For further issues please open an issue on GitHub.
+For further issues please open an issue on GitHub. Please keep in mind that this repo is under current development and can not provide full scale support to all platforms such as Windows, Linux and MacOS. This repo is tested on a host system with Ubuntu 22.0.4.
+ 
 
 ## Acknowledgments
 
