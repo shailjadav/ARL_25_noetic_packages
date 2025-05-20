@@ -41,6 +41,8 @@ class DMPMotionGenerator:
         self.chain = self.kin.create_chain(self.joint_names, base_link, end_effector_link)
         self.dmp = None
         self.IK_joint_trajectory = None
+        self.gripper_trajectory = None # Initialize gripper trajectory storage
+
         
     def _load_kinematics(self, urdf_path, mesh_path=None):
         """Load robot kinematics from URDF"""
@@ -50,14 +52,16 @@ class DMPMotionGenerator:
     def learn_from_rosbag(self, bag_path, joint_topic, dt=None, n_weights=10):
         """Learn DMP from rosbag recording"""
         transforms, joint_trajectory,gripper_trajectory, time_stamp = self._process_rosbag(bag_path, joint_topic)
-                
+        self.gripper_trajectory = gripper_trajectory # Store it
+        
+        print(f"Transforms shape: {transforms.shape}")
         # Convert transforms to PQS representation
-        Y = ptr.pqs_from_transforms(transforms)
+        Y = ptr.pqs_from_transforms(transforms[10:,:,:])
         if dt is None:
             dt = 1/self.frequency
         # Create and train DMP
         self.dmp = CartesianDMP(execution_time=max(time_stamp), dt=dt, n_weights_per_dim=n_weights)
-        self.dmp.imitate(time_stamp, Y)
+        self.dmp.imitate(time_stamp[10:], Y)
         
         return Y, transforms, joint_trajectory, gripper_trajectory
 
@@ -146,21 +150,71 @@ class DMPMotionGenerator:
         return T, trajectory
 
     def save_dmp(self, filepath):
-        """Save the learned DMP to file"""
+        """Save the learned DMP and the associated gripper trajectory to file."""
         if self.dmp is None:
-            raise ValueError("No DMP model available to save")
-        with open(filepath, 'wb') as f:
-            pickle.dump(self.dmp, f)
-        print(f"DMP saved to {filepath}")
+            rospy.logerr("No DMP model available to save.")
+            return # Or raise ValueError("No DMP model available to save")
+        if self.gripper_trajectory is None:
+            # Decide how to handle this: warn, error, or save without it?
+            # Let's warn and save None for gripper_trajectory.
+            rospy.logwarn("Gripper trajectory not available or not learned. Saving None for gripper_trajectory.")
+
+        data_to_save = {
+            'dmp': self.dmp,
+            'gripper_trajectory': self.gripper_trajectory
+        }
+        try:
+            with open(filepath, 'wb') as f:
+                pickle.dump(data_to_save, f)
+            rospy.loginfo(f"DMP and gripper trajectory saved to {filepath}")
+        except Exception as e:
+            rospy.logerr(f"Failed to save DMP data to {filepath}: {e}")
 
     def load_dmp(self, filepath):
-        """Load a DMP from file"""
-        print(f"Loading DMP from {filepath}")
-        with open(filepath, 'rb') as f:
-            self.dmp = pickle.load(f)
-        print(f"DMP loaded successfully")
+        """Load a DMP and the associated gripper trajectory from file."""
+        rospy.loginfo(f"Loading DMP data from {filepath}")
+        try:
+            with open(filepath, 'rb') as f:
+                loaded_data = pickle.load(f)
+
+            # Check if the loaded data is a dictionary (new format) or just the DMP (old format)
+            if isinstance(loaded_data, dict):
+                if 'dmp' in loaded_data:
+                    self.dmp = loaded_data['dmp']
+                else:
+                    rospy.logerr("Loaded dictionary is missing 'dmp' key.")
+                    self.dmp = None # Or raise error
+
+                if 'gripper_trajectory' in loaded_data:
+                    self.gripper_trajectory = loaded_data['gripper_trajectory']
+                    if self.gripper_trajectory is not None:
+                         rospy.loginfo(f"Gripper trajectory loaded ({len(self.gripper_trajectory)} points).")
+                    else:
+                         rospy.loginfo("Loaded None for gripper trajectory.")
+                else:
+                    rospy.logwarn("Loaded dictionary is missing 'gripper_trajectory' key. Setting to None.")
+                    self.gripper_trajectory = None
+            else:
+                # Assume old format (only DMP object was saved)
+                rospy.logwarn("Loading old DMP format (only DMP object found). Gripper trajectory will be None.")
+                self.dmp = loaded_data
+                self.gripper_trajectory = None
+
+            if self.dmp:
+                rospy.loginfo("DMP object loaded successfully.")
+            else:
+                 rospy.logerr("Failed to load DMP object.")
+
+        except FileNotFoundError:
+            rospy.logerr(f"DMP file not found: {filepath}")
+            self.dmp = None
+            self.gripper_trajectory = None
+        except Exception as e:
+            rospy.logerr(f"Error loading DMP data from {filepath}: {e}")
+            self.dmp = None
+            self.gripper_trajectory = None
     
-    def compute_IK_trajectory(self, trajectory, gripper_trajectory,  time_stamp, q0=None, subsample_factor=1):
+    def compute_IK_trajectory(self, trajectory,  time_stamp, q0=None, subsample_factor=1):
         if q0 is None:
             q0 = np.array([0.0, -0.78, 1.5, 0., 0.8, 0.])
         
@@ -168,13 +222,13 @@ class DMPMotionGenerator:
         if subsample_factor > 1:
             subsampled_trajectory = trajectory[::subsample_factor]
             subsampled_time_stamp = time_stamp[::subsample_factor]
-            subsampled_gripper_trajectory = gripper_trajectory[::subsample_factor]
+            subsampled_gripper_trajectory = self.gripper_trajectory[::subsample_factor]
             print(f"Subsampled time from {len(time_stamp)} to {len(subsampled_time_stamp)} points")
             print(f"Subsampled trajectory from {len(trajectory)} to {len(subsampled_trajectory)} points")
         else:
             subsampled_trajectory = trajectory
             subsampled_time_stamp = time_stamp
-            subsampled_gripper_trajectory = gripper_trajectory
+            subsampled_gripper_trajectory = self.gripper_trajectory
         print(f"Solving inverse kinematics for {len(subsampled_trajectory)} points...")
         
         start_time = time.time()
@@ -182,7 +236,7 @@ class DMPMotionGenerator:
         # Use the same random state as in dmp_test_1.py
         random_state = np.random.RandomState(0)
         joint_trajectory = self.chain.inverse_trajectory(
-            subsampled_trajectory,  random_state=random_state)
+            subsampled_trajectory,  random_state=random_state, orientation_weight=1.0)
             
         print(f"IK solved in {time.time() - start_time:.2f} seconds")
         
@@ -342,7 +396,7 @@ class DMPMotionGenerator:
         """
         
         print(f"Plotting trajectory...")
-        fig = pv.figure()
+        fig =pv.figure()
         fig.plot_transform(s=0.3)
         
         # Use the same whitelist as in dmp_test_1.py
@@ -496,7 +550,7 @@ if __name__ == "__main__":
     # Example usage:
     urdf_path = '/root/catkin_ws/src/open_manipulator_friends/open_manipulator_6dof_description/urdf/open_manipulator_6dof.urdf'
     mesh_path = '/root/catkin_ws/src/open_manipulator_friends/open_manipulator_6dof_description/meshes'
-    bag_path = '/root/catkin_ws/recordings/pick8.bag'
+    bag_path = '/root/catkin_ws/recordings/pick11.bag'
 
     # Initialize the motion generator with the same base_link as dmp_test_1.py
     dmp_gen = DMPMotionGenerator(
@@ -512,24 +566,26 @@ if __name__ == "__main__":
     )
     
     # Save the learned DMP if needed
-    dmp_gen.save_dmp('/root/catkin_ws/recordings/learned_pick_motion.pkl')
-    dmp_gen.load_dmp('/root/catkin_ws/recordings/learned_pick_motion.pkl')
+    dmp_path = '/root/catkin_ws/recordings/learned_pick_motion_11.pkl'
+    dmp_gen.save_dmp(dmp_path)
+    # dmp_gen.load_dmp(dmp_path)
     
     ## Generate new trajectory
     
     # Define new goal
     new_start = dmp_gen.dmp.start_y.copy()
     new_goal = dmp_gen.dmp.goal_y.copy()
+    print(f"Origignal goal: {new_goal}")
     
-    new_start[:3] += np.array([-0.1,0.,0.02])
-    new_goal[:3] += np.array([0.0, 0.0, 0.05])  # Modify position
+    new_start[:3] += np.array([0.01, 0.0, 0.03])
+    new_goal[:3] += np.array([+0.0, 0.0, +0.03])  # Modify position
     
     print(f"New goal: {new_goal}")
     # Generate
     T, trajectory = dmp_gen.generate_trajectory(start_y=new_start, goal_y=new_goal)
 
     # Visualize the trajectory
-    trajectory, IK_joint_trajectory, gripper_traj ,T = dmp_gen.compute_IK_trajectory(trajectory, gripper_traj, T ,subsample_factor=10)
+    trajectory, IK_joint_trajectory, gripper_traj ,T = dmp_gen.compute_IK_trajectory(trajectory, T ,subsample_factor=10)
     #trajectory, IK_joint_trajectory, T = dmp_gen.compute_IK_trajectory_KDL(trajectory, T)
     dmp_gen.visualize_trajectory(trajectory, IK_joint_trajectory)
     
@@ -540,15 +596,15 @@ if __name__ == "__main__":
     
     full_trajectory = np.hstack((IK_joint_trajectory, gripper_traj.reshape(-1, 1)))
     # # Interpolate to 20Hz and Save
-    interpolated_traj, interpolated_time = interpolate_joint_trajectory(full_trajectory, T, target_freq=20.0)
-    save_trajectory_data(interpolated_traj, interpolated_time, "/root/catkin_ws/recordings/interpolated_traj.pkl")
+    interpolated_traj, interpolated_time = interpolate_joint_trajectory(full_trajectory, T, target_freq=40.0)
+    # save_trajectory_data(interpolated_traj, interpolated_time, "/root/catkin_ws/recordings/interpolated_traj.pkl")
 
     # Later, you can reload and publish it
-    joint_traj, time_stamps = load_trajectory_data("/root/catkin_ws/recordings/interpolated_traj.pkl")
+    # joint_traj, time_stamps = load_trajectory_data("/root/catkin_ws/recordings/interpolated_traj.pkl")
     
     # ROS Publishing
-    try:
-        publisher = ROSTrajectoryPublisher(['joint1', 'joint2','joint3','joint4','joint5','joint6'])
-        publisher.publish_trajectory(joint_traj, time_stamps)
-    except rospy.ROSInterruptException:
-        print("ROS publishing interrupted.")
+    # try:
+    #     publisher = ROSTrajectoryPublisher(['joint1', 'joint2','joint3','joint4','joint5','joint6'])
+    #     publisher.publish_trajectory(interpolated_traj, interpolated_time)
+    # except rospy.ROSInterruptException:
+    #     print("ROS publishing interrupted.")
