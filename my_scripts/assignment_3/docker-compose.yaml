@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  om_n1:
+    image: asl_om_gpu_noetic #image_name
+    container_name: asl_om
+    runtime: nvidia
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - $HOME/.Xauthority:/root/.Xauthority:rw
+      - /dev:/dev
+      - /home/sjadav/Documents/Projects/advance_robot_learning_2025/Assignment_3/Docker_volume:/workspace/Docker_volume:rw
+    device_cgroup_rules:
+      - "c 81:* rmw"
+      - "c 189:* rmw"
+    stdin_open: true  # equivalent to -i
+    tty: true         # equivalent to -t
+
+  #sudo apt-get update
+  #sudo apt-get install docker-compose-plugin
+  #docker compose up
+
