@@ -18,6 +18,7 @@ except ModuleNotFoundError:
 # Control table addresses for Dynamixel motors
 ADDR_OPERATING_MODE = 11       # Address for Operating Mode
 ADDR_TORQUE_ENABLE = 64        # Address for Torque Enable
+CURRENT_LIMIT = 38
 
 # Protocol version
 PROTOCOL_VERSION = 2.0
@@ -63,6 +64,10 @@ def change_operating_mode(mode_value):
             # Set new operating mode
             dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(
                 portHandler, dxl_id, ADDR_OPERATING_MODE, target_mode)
+
+
+            dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(
+                portHandler, dxl_id, CURRENT_LIMIT, 50)
 
             if dxl_comm_result != COMM_SUCCESS:
                 print(f"Communication error setting mode for ID {dxl_id}: {packetHandler.getTxRxResult(dxl_comm_result)}")
