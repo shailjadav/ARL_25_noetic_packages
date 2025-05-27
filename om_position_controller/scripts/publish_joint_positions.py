@@ -3,58 +3,59 @@
 
 import rospy
 import numpy as np
-from sensor_msgs.msg import JointState
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 # Define parameters
-num_timesteps = 500      # Total timesteps
-total_time = 10.0        # Total trajectory duration (seconds)
-dt = total_time / num_timesteps  # Time step interval
-t = np.linspace(0, total_time, num_timesteps)  # Time vector
+num_timesteps = 500
+total_time = 10.0
+dt = total_time / num_timesteps
+t = np.linspace(0, total_time, num_timesteps)
 
 # Initialize trajectory with zeros
 desired_positions = np.zeros((num_timesteps, 6))
 
 # Sine wave properties
-amplitude = 1.0  # Adjust amplitude if needed
-period = 10.0    # Period in seconds
-omega = 2 * np.pi / period  # Angular frequency
+amplitude = 1.0
+period = 10.0
+omega = 2 * np.pi / period
 
 # Assign sine waves to the last three joints with different phase shifts
-desired_positions[:, 3] = amplitude * np.sin(omega * t + 0)         # No delay
-desired_positions[:, 4] = amplitude * np.sin(omega * t + np.pi / 3) # Phase shift π/3
-desired_positions[:, 5] = amplitude * np.sin(omega * t + 2 * np.pi / 3) # Phase shift 2π/3
+desired_positions[:, 3] = amplitude * np.sin(omega * t + 0)
+desired_positions[:, 4] = amplitude * np.sin(omega * t + np.pi / 3)
+desired_positions[:, 5] = amplitude * np.sin(omega * t + 2 * np.pi / 3)
 
-# Joint names
-joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+# Correct joint names (no underscores)
+joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
-def publish_joint_states():
-    rospy.init_node('joint_state_publisher', anonymous=True)
-    pub = rospy.Publisher('/gravity_compensation_controller//traj_joint_states', JointState, queue_size=10)
-
-    rate = rospy.Rate(int(1/dt))  # Matching the trajectory steps
+def publish_joint_trajectory():
+    rospy.init_node('joint_trajectory_publisher', anonymous=True)
     
-    rospy.loginfo("Publishing joint states...")
-
+    # Publish to the arm controller's command topic
+    pub = rospy.Publisher('/open_manipulator_6dof/arm_controller/command', JointTrajectory, queue_size=10)
+    
+    rospy.sleep(1.0)  # Wait for publisher to be ready
+    
+    rospy.loginfo("Publishing joint trajectory...")
+    
+    # Create trajectory message
+    traj_msg = JointTrajectory()
+    traj_msg.header.stamp = rospy.Time.now()
+    traj_msg.joint_names = joint_names
+    
+    # Add all trajectory points
     for t_idx in range(num_timesteps):
-        if rospy.is_shutdown():
-            break
-
-        msg = JointState()
-        msg.header.stamp = rospy.Time.now()
-        msg.name = joint_names
-        msg.position = desired_positions[t_idx, :].tolist()
-        msg.velocity = []  # Not needed
-        msg.effort = []    # Not needed
-
-        rospy.loginfo("Timestep %d: %s", t_idx, msg.position)
-        pub.publish(msg)
-
-        rate.sleep()  # Maintain loop rate
-
-    rospy.loginfo("Finished publishing all timesteps.")
+        point = JointTrajectoryPoint()
+        point.positions = desired_positions[t_idx, :].tolist()
+        point.time_from_start = rospy.Duration(t_idx * dt)
+        traj_msg.points.append(point)
+    
+    # Publish the complete trajectory
+    pub.publish(traj_msg)
+    rospy.loginfo("Published trajectory with %d points", len(traj_msg.points))
 
 if __name__ == '__main__':
     try:
-        publish_joint_states()
+        publish_joint_trajectory()
+        rospy.sleep(2.0)  # Keep node alive briefly
     except rospy.ROSInterruptException:
         pass

@@ -5,6 +5,7 @@ from rag_call import load_documents, OllamaEmbeddings, RecursiveCharacterTextSpl
 from rag_call import Chroma, ChatPromptTemplate, ChatOllama, RunnablePassthrough, StrOutputParser
 from toh_visual import TowerOfHanoi, parse_and_move
 from matplotlib import pyplot as plt
+
 def setup_rag_system(sources):
     """Set up the RAG system using functions from rag_call.py"""
     print("\nSetting up the RAG system...")
@@ -143,6 +144,7 @@ def main():
     # Define your document sources
     sources = [
         "/workspace/Docker_volume/hanoi_tagged_solution_3_disks.html",
+        "https://en.wikipedia.org/wiki/Tower_of_Hanoi"
         # Add other sources as needed
     ]
     

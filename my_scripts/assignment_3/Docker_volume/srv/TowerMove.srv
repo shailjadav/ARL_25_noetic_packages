@@ -1,0 +1,6 @@
+int32 disk
+string source_peg
+string destination_peg
+---
+bool success
+string message

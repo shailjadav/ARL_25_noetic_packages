@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib.patches import Rectangle
 import time
 
+
 class TowerOfHanoi:
     def __init__(self, num_disks=3):
         self.num_disks = num_disks

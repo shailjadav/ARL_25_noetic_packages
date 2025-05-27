@@ -390,6 +390,7 @@
 
   <!--  Gripper link sub -->
   <link name="gripper_link_sub">
+    <dynamics damping="0.5" friction="0.5"/>
     <visual>
       <origin xyz="0.0 -0.0 0" rpy="0 0 0"/>
       <geometry>
@@ -424,6 +425,7 @@
 
   <!--  Gripper joint sub -->
   <joint name="gripper_sub" type="prismatic">
+    <dynamics damping="0.5" friction="0.5"/>
     <parent link="link7"/>
     <child link="gripper_link_sub"/>
     <origin xyz="0.0 -0.021 0.0707" rpy="0 0 0"/>

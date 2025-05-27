@@ -211,7 +211,8 @@ class DMPCubeManipulator:
                  tf_update_rate=5.0,
                  joint_states_topic="/joint_states",
                  cube_height_approx=0.04,
-                 cube_xy_proximity_threshold=0.03): # Added joint_states_topic
+                 cube_xy_proximity_threshold=0.03,
+                 use_sim = False): # Added joint_states_topic
         """
         Initializes the ROS node, TF listener, multiple DMP loaders, and trajectory handler.
         Args:
@@ -235,7 +236,6 @@ class DMPCubeManipulator:
         self.current_cube_pose = None
         self.tf_update_rate = tf_update_rate
         self.tf_timer = None
-
         self.last_ee_pqs = None
 
         self.dmp_generators = {}
@@ -347,8 +347,10 @@ class DMPCubeManipulator:
         dmp = generator.dmp
 
         # If start_pose_pqs is None here, generator.generate_trajectory will use dmp.start_y
-        final_start_pqs = start_pose_pqs
-        final_goal_pqs = goal_pose_pqs if goal_pose_pqs is not None else dmp.goal_y.copy()
+        final_start_pqs = dmp.start_y.copy()
+        if start_pose_pqs.any():
+            final_start_pqs[:3] = start_pose_pqs[:3] # Use provided start position, keep orientation from DMP
+        final_goal_pqs = dmp.goal_y.copy()
 
         if target_tf_frame and motion_type in ['pick', 'place']:
             latest_pose = self.get_latest_cube_pose(target_tf_frame)
@@ -402,7 +404,7 @@ class DMPCubeManipulator:
 
     def execute_motion(self, motion_type, start_pose_pqs=None, goal_pose_pqs=None,
                        target_tf_frame=None, wait_for_tf_sec=1.0, subsample_factor_ik=1):
-        rospy.loginfo(f"--- Initiating motion sequence: '{motion_type}' ---")
+        rospy.loginfo(f"--- Initialising motion sequence: '{motion_type}' ---")
 
         effective_start_pqs = start_pose_pqs
 
@@ -681,8 +683,8 @@ if __name__ == "__main__":
         URDF_FILE = '/root/catkin_ws/src/open_manipulator_friends/open_manipulator_6dof_description/urdf/open_manipulator_6dof.urdf'
         MESH_DIR = '/root/catkin_ws/src/open_manipulator_friends/open_manipulator_6dof_description/meshes'
         WORLD_FRAME = "world"
-        CUBE_TO_GRASP = "cube_3" # Make sure this TF frame exists in your setup
-        CUBE_TO_PLACE = "cube_4"
+        CUBE_TO_GRASP = "red_cube" # Make sure this TF frame exists in your setup
+        CUBE_TO_PLACE = "green_cube" 
         # PLACE_TARGET_POSE = np.array([0.2, 0.0, 0.05,  0.28606298 ,  0.05556376 , 0.94565966, -0.14425133]) # x,y,z,qw,qx,qy,qz
         # [0.20902298 -0.07639148  0.0803293   0.28606298  0.05556376  0.94565966 -0.14425133]
         LIFT_TARGET_PQS = np.array([0.08039667, -0.00823571, 0.12112987, 0.40824577, 0.03776871, 0.91182508, -0.02199852]) 
@@ -709,9 +711,9 @@ if __name__ == "__main__":
         rospy.sleep(1.0)
 
 
-        rospy.loginfo("Checking Tower of Hanoi condition...")
-        if  not grasper_node.check_hanoi_tower_condition(["cube_3", "cube_4"]):
-            rospy.logwarn("Tower of Hanoi condition not satisfied. ")
+        # rospy.loginfo("Checking Tower of Hanoi condition...")
+        # if  not grasper_node.check_hanoi_tower_condition(["cube_3", "cube_4"]):
+        #     rospy.logwarn("Tower of Hanoi condition not satisfied. ")
 
 
 
