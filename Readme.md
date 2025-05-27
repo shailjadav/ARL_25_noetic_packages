@@ -189,7 +189,8 @@ If you’re unable to access or work with the real robot, a simulation environme
    python3 4_rs_detect_sim.py 
    ```
 
-3. **Start the simulate_trajectory script**
+3. **(Optional)Visualise your recordings**
+   First play the rosbag and then execute this script
    ```bash 
    roscd om_position_controller/scripts && \
    python3 simulated_trajectory.py
