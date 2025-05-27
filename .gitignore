@@ -3,5 +3,6 @@
 *.pt
 my_scripts/**/*.mp4
 *.avi
-*.pyc
-*pycache
+*pyc
+__pycache__/
+*.cpython*
