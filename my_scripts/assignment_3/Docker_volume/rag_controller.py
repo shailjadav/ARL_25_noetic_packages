@@ -12,9 +12,21 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.documents import Document
+import sys # Add this import
 
 
+import re
 
+current_script_dir = os.path.dirname(os.path.abspath(__file__))
+# Navigate up to the 'my_scripts' directory
+# assignment_3_dir is os.path.dirname(current_script_dir) -> .../assignment_3/
+# my_scripts_dir is os.path.dirname(os.path.dirname(current_script_dir)) -> .../my_scripts/
+my_scripts_dir = os.path.dirname(os.path.dirname(current_script_dir))
+if my_scripts_dir not in sys.path:
+    sys.path.insert(0, my_scripts_dir)
+# --- End Path Setup ---
+
+from assignment_2.dmp_controller import *
 # Set User-Agent (recommended to avoid potential blocking and for identification)
 os.environ["USER_AGENT"] = "MyRAGSystem/0.1 (e11806417@student.tuwien.ac.at or project-url)"
 
@@ -88,7 +100,75 @@ def load_documents(sources: List[str]) -> List[Document]:
     
     return all_documents
 
+def decode_move_tag(tag: str) -> dict:
+    """
+    Decodes a Tower of Hanoi move tag into a dictionary.
+
+    Args:
+        tag: The move tag string (e.g., "MD1AC").
+
+    Returns:
+        A dictionary with 'disk', 'start', and 'end' keys.
+        Returns None if the tag format is invalid.
+    """
+    match = re.fullmatch(r"MD(\d+)([A-C])([A-C])", tag)
+    if match:
+        disk_number = int(match.group(1))
+        source_peg = match.group(2)
+        destination_peg = match.group(3)
+        return {"disk": disk_number, "start": source_peg, "end": destination_peg}
+    else:
+        print(f"Warning: Invalid tag format encountered: {tag}")
+        return None
+
+
+def motion_sequence(grasper_node,cube_to_grasp, lift_target_pqs, target_pqs, subsample_factor_ik):
+    motion_sequence = [
+                {'name': 'pick', 'action': lambda: grasper_node.execute_motion(motion_type='place' ,subsample_factor_ik=subsample_factor_ik, wait_for_tf_sec=2.0)},
+                {'name': 'lift', 'action': lambda: grasper_node.lift_cube(goal_pose_pqs=lift_target_pqs, subsample_factor_ik=subsample_factor_ik)},
+                {'name': 'place', 'action': lambda: grasper_node.place_cube(start_pose_pqs=lift_target_pqs, subsample_factor_ik=subsample_factor_ik)},
+                {'name': 'home', 'action': lambda: grasper_node.go_home(goal_pose_pqs=lift_target_pqs, subsample_factor_ik=subsample_factor_ik)} 
+            ]
+    return motion_sequence
+
 def main():
+
+    # -----------------Initialize the DMP Cube Manipulator-----------------#
+    
+    grasper_node = None
+    DMP_FILES = {
+        'pick': '/root/catkin_ws/recordings/learned_pick_motion_11.pkl',
+        'lift': '/root/catkin_ws/recordings/learned_lift_motion_4.pkl',
+        'place': '/root/catkin_ws/recordings/learned_place_motion_14.pkl',
+        'home': '/root/catkin_ws/recordings/learned_release_motion_2.pkl' # Renamed from 'home' in example
+    }
+    URDF_FILE = '/root/catkin_ws/src/open_manipulator_friends/open_manipulator_6dof_description/urdf/open_manipulator_6dof.urdf'
+    MESH_DIR = '/root/catkin_ws/src/open_manipulator_friends/open_manipulator_6dof_description/meshes'
+    WORLD_FRAME = "world"
+
+    LIFT_TARGET_PQS = np.array([0.08039667, -0.00823571, 0.12112987, 0.40824577, 0.03776871, 0.91182508, -0.02199852]) 
+
+    
+
+    TF_WAIT_TIME = 1.5
+    IK_SUBSAMPLE = 5
+    PUB_RATE = 20.0
+    TF_RATE = 10.0
+    PAUSE_BETWEEN_MOTIONS = 1.0 # Seconds
+    JOINT_STATES_TOPIC = "/joint_states" # Default, but can be configured
+
+    grasper_node = DMPCubeManipulator(
+        dmp_paths=DMP_FILES,
+        urdf_path=URDF_FILE,
+        mesh_path=MESH_DIR,
+        base_frame=WORLD_FRAME,
+        tf_update_rate=TF_RATE,
+        publish_rate=PUB_RATE,
+        joint_states_topic=JOINT_STATES_TOPIC
+    )
+    print(f"Grasper node :{grasper_node}")
+
+
     print("Initializing Retrieval Augmented Generation system...")
 
     # Define your sources directly in an array
@@ -163,16 +243,7 @@ def main():
         print("Also ensure you have installed 'pip install -U langchain-ollama'.")
         return
 
-    # 6. Define Prompt Template
-    # template = """Answer the question based *only* on the following context. If the context does not contain the answer, state that you do not have enough information from the provided context to answer. Do not make up information.
-
-    # Context:
-    # {context}
-
-    # Question: {question}
-
-    # Answer:
-    # """
+   
     template = """Answer the question based on the following context if relevant. If the context does not contain information related to the question, you may use your general knowledge to provide an answer.
 
     Context:
@@ -195,30 +266,39 @@ def main():
     print("\n--- Starting Question Answering Session ---")
     print("Type 'quit', 'exit', or 'q' to end the session.")
 
-    # 8. Continuous Question Answering Loop
-    while True:
-        user_question = input("\nEnter your question: ")
-        if user_question.lower() in ["quit", "exit", "q"]:
-            print("Exiting RAG system.")
-            break
-        if not user_question.strip():
-            print("No question entered. Please provide a question.")
-            continue
 
-        print("Processing your question...")
-        try:
-            answer = chain.invoke(user_question)
-            print("\nAnswer:")
-            print(answer)
-        except Exception as e:
-            print(f"Error during RAG chain invocation: {e}")
+    prompt = f"Solve the Tower of Hanoi problem with 3 disks. Return the solution only in tagged format"
+    print("Processing the prompt...")
+    answer = chain.invoke(prompt)
+    print(f"Answer received: {answer}")
+
+    line = answer.split('\n')[0]  # Assuming the first line contains the moves
+    if line.startswith("MD"):
+        move = decode_move_tag(line)
+        if move:
+            print(f"Decoded Move: Disk {move['disk']} from {move['start']} to {move['end']}")
+            sequence = motion_sequence(
+                grasper_node=grasper_node,
+                cube_to_grasp=f"cube_{move['disk']}",
+                lift_target_pqs=LIFT_TARGET_PQS,
+                target_pqs=np.array([0.08039667, -0.00823571, 0.12112987, 0.40824577, 0.03776871, 0.91182508, -0.02199852]),
+                subsample_factor_ik=IK_SUBSAMPLE
+            )
+            for motion_info in sequence:
+                rospy.loginfo(f"Executing: {motion_info['name']}")
+                results = motion_info['action']()
+                if results is None or results[0] is None: # results[0] is joint_traj_arm
+                    raise RuntimeError(f"{motion_info['name'].capitalize()} motion failed.")
+                joint_traj_arm, gripper_traj, time_stamps, cartesian_traj_viz = results
+                print(f"Grasper node: {grasper_node}")
+                # grasper_node.simulate_trajectory(motion_info['name'], joint_traj_arm, cartesian_traj_viz) # Optional
+                # grasper_node.publish_trajectory(joint_traj_arm, time_stamps, gripper_traj) # UNCOMMENTED for actual execution
+                rospy.loginfo(f"Waiting {PAUSE_BETWEEN_MOTIONS}s after {motion_info['name']}...")
+                rospy.sleep(PAUSE_BETWEEN_MOTIONS)
+        else:
+            print(f"Invalid move tag encountered: {line}")
+    else:
+        print(f"Non-move line: {line}")
 
 if __name__ == "__main__":
-    # --- Pre-run Checklist ---
-    # 1. Ensure Ollama is installed and running.
-    # 2. Pull the necessary Ollama models:
-    #    ollama pull nomic-embed-text
-    #    ollama pull gemma3:4b (or your chosen OLLAMA_CHAT_MODEL)
-    # 3. Ensure Python packages listed in requirements.txt (or below) are installed.
-
     main()
