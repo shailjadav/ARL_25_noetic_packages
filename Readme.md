@@ -130,28 +130,84 @@ This shows the deployment of the base controller (build by the team of Robotis)
    ```bash
    rosbag play ~/catkin_ws/recordings/move1.bag
    ```
-3. Running on robot
+3. Running on robot or in simulation
+   For executing in simulation please pass argunment sim:=true
    ```bash
-    roslaunch om_position_controller position_control.launch
+    roslaunch om_position_controller position_control.launch sim:=false
     rosbag play move1.bag --hz=50
    ```
 
+
 # Assignments
-In the folder `root/catkin_ws/src/my_scripts/` there is inspiration for solving the assignments. These are not fully functional solutions, but rather blueprints.
-They are not here to solve your assignments, but rather point you to some direction.  
 
-## Training and executing DMPs
+In the folder `root/catkin_ws/src/my_scripts/`, you’ll find reference scripts to help guide your assignment work. These are *not* complete solutions, but rather blueprints to point you in the right direction.
 
-Wihtin the folder`root/catkin_ws/src/my_scripts/assignment_1` there are scripts for
-- checking the recorded motions with `motions_test.py`
-- training DMPs using the recorded trajectories with `dmp_motions.py`. 
+---
 
-Building on top of these within the folder`root/catkin_ws/src/my_scripts/assignment_2` there are scripts for
-- training YOLO on custom objects using the annotation of the initila frame and deploying SAM2 with the scripts `1_dataset_create.py`, `2_train_model.py` and `3_validate_model.py`.
-- For detecting the objects using the realsense camera you can use `4_rs_detect.py`.
-- Once Objects are detected and their position is evaluated in the world frame, you can use `dmp_controller.py` to use your learned motions and execute them onto custom target goals and start points.
+## Training and Executing DMPs
+
+Within `root/catkin_ws/src/my_scripts/assignment_1`, you’ll find scripts for:
+
+- **Visualizing recorded motions:**  
+  `motions_test.py` — to inspect recorded trajectories.
+
+- **Training DMPs using recorded trajectories:**  
+  `dmp_motions.py` — to generate motion primitives from demonstrations.
+
+---
+
+## Object Detection and Motion Execution
+
+In `root/catkin_ws/src/my_scripts/assignment_2`, you’ll build upon the previous assignment with object detection and motion control:
+
+- **Custom object detection using YOLO and SAM2:**  
+  Use the following scripts:
+  - `1_dataset_create.py` – create dataset from the initial frame.
+  - `2_train_model.py` – train the YOLO model.
+  - `3_validate_model.py` – validate the trained model.
+
+- **RealSense camera-based detection:**  
+  - `4_rs_detect.py` – detect objects and determine their positions in the world frame.
+
+- **Motion execution using DMPs:**  
+  - `dmp_controller.py` – execute learned motions toward custom goals based on detected object positions.
+
+---
+
+## Simulated Robot Execution
+
+If you’re unable to access or work with the real robot, a simulation environment is provided via the `om_position_controller` package. Follow these steps:
+
+1. **Start the position controller (simulation mode):**
+   ```bash
+   roslaunch om_position_controller position_control.launch sim:=true
+   ```
+
+2. **Start the republishing of the cube coordinates**
+   ```bash 
+   roscd om_position_controller/scripts && \
+   python3 4_rs_detect_sim.py 
+   ```
+
+3. **Start the simulate_trajectory script**
+   ```bash 
+   roscd om_position_controller/scripts && \
+   python3 simulated_trajectory.py
+   ```
+
+4. **Execute the pick_and_place script.**
+   ```bash 
+   roscd om_position_controller/scripts && \
+   python3 pick_and_place.py
+   ```
+![Simulation pick and place](fig/manipulation_in_sim.gif)
 
 
+For going back to the home pose execute:
+   ```bash 
+   roscd om_position_controller/scripts && \
+   python3 move_to_home.py 
+   ```
 
 ## Installing Python packages
 As the solutions for the tasks are not provided beforehand you need to install packages yourself for the solutions.

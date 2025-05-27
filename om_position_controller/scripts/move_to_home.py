@@ -16,6 +16,7 @@ class SimpleHomeMover:
         
         # Home position joint angles
         self.home_position = np.array([0.0, -0.78, 1.5, 0.0, 0.8, 0.0])
+        self.home_position = np.array([-0.03834952, -0.84062147, 1.26093221, 0.00613592, 1.97576725, -0.00460194])  # Ensure angles are within limits
         self.gripper_open_position = 0.01  # Open gripper position
         
         print("Setting up ROS node...")
